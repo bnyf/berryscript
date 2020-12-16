@@ -1,5 +1,8 @@
-#include "utils.h"
 #include "vm.h"
+#include "parser.h"
+#include "utils.h"
+
+std::string rootDir;
 
 // 返回大于v的最小的2的幂
 uint32_t ceilToPowerOf2(uint32_t v) {
@@ -16,10 +19,10 @@ uint32_t ceilToPowerOf2(uint32_t v) {
     return v;
 }
 
-std::shared_ptr<std::string> readFile(const std::string &filename) {
+std::string* readFile(const std::string &filename) {
     std::ifstream infile(filename);
-    ASSERT(infile.is_open(), "Coundl't open file");
-    std::shared_ptr<std::string> content(new std::string((std::istreambuf_iterator<char>(infile)),// input iterator, 指向 infile 文件流中的第一个字节
+    ASSERT(infile.is_open(), "Couldn't open file");
+    std::string *content(new std::string((std::istreambuf_iterator<char>(infile)), // input iterator, 指向 infile 文件流中的第一个字节
             std::istreambuf_iterator<char>())); // input iterator的默认构造函数，指向 end
     infile.close();
 
@@ -35,11 +38,11 @@ void runFile(const std::string &filename) {
 
     std::shared_ptr<VM> vm(new VM);
 
-    std::shared_ptr<std::string>content = readFile(filename);
+    std::unique_ptr<std::string>content(readFile(filename));
     if(content->size() == 0)
         return;
-    vm->curParser = std::make_shared<Parser>(vm, filename, content);
-    std::shared_ptr<Parser>parser = vm->curParser;
+    vm->curParser = std::make_shared<Parser>(vm, filename, std::move(content));
+    std::shared_ptr<Parser> &parser = vm->curParser;
 
     // 测试词法分析
     #include "token.list"
@@ -69,8 +72,7 @@ void errorReport(Parser &parser,
 	 break;
       case ERROR_LEX:
       case ERROR_COMPILE:
-	 ASSERT(parser != NULL, "parser is null!");
-	 fprintf(stderr, "%s:%d \"%s\"\n", parser.fileName,
+	 fprintf(stderr, "%s:%d \"%s\"\n", parser.fileName.c_str(),
 	       parser.preToken.lineNo, buffer);
 	 break;
       case ERROR_RUNTIME:

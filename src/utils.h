@@ -7,7 +7,8 @@
 #include <fstream>
 #include <memory>
 
-#include "parser.h"
+class Parser;
+
 typedef enum {
    ERROR_IO,
    ERROR_MEM,
@@ -15,8 +16,6 @@ typedef enum {
    ERROR_COMPILE,
    ERROR_RUNTIME
 } ErrorType;
-
-std::string rootDir = "";
 
 #define DEFAULT_BUFFER_SIZE 512
 #define UNUSED __attribut__((unsued))
@@ -30,9 +29,9 @@ std::string rootDir = "";
 #ifdef DEBUG
     #define ASSERT(condition, errMsg) \
         do {\
-            if(!condition) {\
-                fprintf(stderr, "ASSERT failed！ %s:%d In function %s(): %s\n",
-                           __FILE__, __LINE__, __func__, errMsg); \
+            if(!(condition)) {\
+                fprintf(stderr, "ASSERT failed！ %s:%d In function %s(): %s\n", \
+                __FILE__, __LINE__, __func__, errMsg); \
                 abort();\
             }\
         } while(0);
@@ -55,7 +54,7 @@ void errorReport(Parser &parser,
    errorReport(NULL, ERROR_RUNTIME, __VA_ARGS__)
 
 uint32_t ceilToPowerOf2(uint32_t v);
-std::shared_ptr<std::string> readFile(const std::string &filename);
+std::string* readFile(const std::string &filename);
 void runFile(const std::string &filename);
 
 #endif

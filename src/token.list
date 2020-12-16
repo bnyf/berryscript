@@ -1,9 +1,11 @@
 std::string tokenArray[] = {
    "UNKNOWN",
+
    "NUM",		   
    "STRING",     	   
    "ID",	     	   
-   "INTERPOLATION",
+   "TOKEN_STRING_BEFORE_INTERPOLATION",
+
    "VAR",		   
    "FUN",		   
    "IF",		   
@@ -13,15 +15,17 @@ std::string tokenArray[] = {
    "WHILE",	     	   
    "FOR",	     	   
    "BREAK",	     	   
-   "CONTINUE"
+   "CONTINUE",
    "RETURN",     	   
-   "NULL",	     	   
+   "NULL",	  
+
    "CLASS",	     	   
    "THIS",	     	   
    "STATIC",     	   
    "IS",     	   
    "SUPER",	     	   
-   "IMPORT",     	   
+   "IMPORT",
+
    "COMMA",		   
    "COLON",		   
    "LEFT_PAREN",	   

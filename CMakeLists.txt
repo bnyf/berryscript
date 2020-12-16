@@ -1,16 +1,12 @@
 cmake_minimum_required(VERSION 3.14)
 project(berryscript)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_C_STANDARD 99)
 
-include_directories(src)
+add_definitions(-D DEBUG)
+add_definitions("-Wall -g")
 
-add_executable(c_fileserver
-        src/parser.cpp
-        src/parser.h
-        src/utils.cpp
-        src/utils.h
-        src/vm.cpp
-        src/vm.h
-        src/main.cpp)
+include_directories(src)
+aux_source_directory(src DIR_SRCS)
+add_executable(bs ${DIR_SRCS})

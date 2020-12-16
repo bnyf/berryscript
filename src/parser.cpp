@@ -1,19 +1,19 @@
-#include "parser.h"
-#include "dataBuffer.h"
 #include "utils.h"
+#include "dataBuffer.h"
+#include "parser.h"
 
-Parser::Parser(std::weak_ptr<VM> vm, std::string fileName, std::string *sourceCode, Parser* parent) {
+Parser::Parser(std::weak_ptr<VM> vm, std::string fileName, std::unique_ptr<std::string> sourceCode, Parser* parent) {
     this->fileName = fileName;
     this->parent = parent;
     this->vm = vm;
-    this->sourceCode = sourceCode;
-
+    this->sourceCode = std::move(sourceCode);
+    this->sourceCode->push_back('\0');
     this->curToken = Token_t();
     this->preToken = Token_t();
     this->nextIdx = 1;
-    this->curChar = sourceCode->at(0);
+    this->curChar = this->sourceCode->at(0);
     this->interpolationExpectRightParenNum = 0;
-    this->codeSize = sourceCode->size();
+    this->codeSize = this->sourceCode->size();
 }
 
 // 判断是关键字还是标志符
@@ -52,7 +52,7 @@ bool Parser::matchNextChar(char expectedChar) {
 }
 
 // 跳过空白符
-bool Parser::skipBlanks() {
+void Parser::skipBlanks() {
     // 判断是否是空白符
     while(isspace(curChar)) {
         if(curChar == '\n') {
@@ -64,7 +64,7 @@ bool Parser::skipBlanks() {
 
 // 跳过一行
 void Parser::skipALine() {
-    while(nextIdx < codeSize) {
+    while(curChar != '\0') {
         moveAheadCurChar();
         if(curChar == '\n') {
             curToken.lineNo++;
@@ -76,18 +76,25 @@ void Parser::skipALine() {
 
 // 跳过注释
 void Parser::skipComment() {
+    char nextChar = getNextChar();
     if (curChar == '/') {  // 行注释
         skipALine();
     } else {   // 区块注释
-        do {
-            while(nextIdx < codeSize &&  getNextChar() != '*') {
-                moveAheadCurChar();
-                if (curChar == '\n') {
-                    curToken.lineNo++;
-                }
-            }
+        while(nextChar != '*' && nextChar != '\0') {
             moveAheadCurChar();
-        } while(matchNextChar('\\'));
+            if (curChar == '\n') {
+                curToken.lineNo++;
+            }
+            nextChar = getNextChar();
+        }
+        if(matchNextChar('*')) {
+            if (!matchNextChar('/')) {   //匹配*/
+                LEX_ERROR(*this, "expect '/' after '*'!");
+	        }
+            moveAheadCurChar();
+        } else {
+            LEX_ERROR(*this, "expect '*/' before file end!");
+        }
     }
     skipBlanks(); //注释之后有可能会有空白字符
 }
@@ -104,13 +111,15 @@ void Parser::parseId() {
 
 // 处理当前字符串
 void Parser::parseString() {
-    DataBuffer<char> str;
+    DataBuffer<char> str(this->vm);
     while(nextIdx < codeSize) {
         moveAheadCurChar();
         if(curChar == '"') {
             curToken.tokenType = TOKEN_STRING;
             break;
         }
+        if(curChar == '\0')
+            LEX_ERROR(*this, "unterminated string!");
         if(curChar == '%') {
             if (nextIdx < codeSize && !matchNextChar('(')) {
                 LEX_ERROR(*this, "'%' should followed by '('!");
@@ -158,23 +167,21 @@ void Parser::parseString() {
                     break;
                 default:
                     LEX_ERROR(*this, "unsupport escape \\%c", curChar);
-                break;
+                    break;
             }
         } else {
             str.bufferAdd(curChar);
         }
     }
     str.bufferClear();
-    if(curToken.tokenType == TOKEN_EOF)
-        LEX_ERROR(*this, "unterminated string!");
 }
 
 // 获取下一个 Token
 void Parser::getNextToken() {
     preToken = curToken;
-    curToken = Token_t(TOKEN_EOF, nextIdx - 1, 0, curToken.lineNo);
     skipBlanks();
-    while(nextIdx <= codeSize) {
+    curToken = Token_t(TOKEN_EOF, nextIdx - 1, 0, curToken.lineNo);
+    while(curChar != '\0') {
         switch(curChar) {
             case ',':
                 curToken.tokenType = TOKEN_COMMA;

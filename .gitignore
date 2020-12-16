@@ -1,3 +1,4 @@
 .vscode
 .VSCodeCounter
 build
+*.bs

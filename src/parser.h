@@ -3,7 +3,10 @@
 #include <cstdint>
 #include <cctype>
 #include <string>
-#include "vm.h"
+
+class VM;
+template<class T>
+class DataBuffer;
 
 typedef enum {
    TOKEN_UNKNOWN,
@@ -109,7 +112,7 @@ typedef struct keywordToken_s{
 const int keywordTokenNum = 18;
 
 //关键字查找表
-keywordToken_t keywordsToken[] = {
+const keywordToken_t keywordsToken[] = {
    keywordToken_t("var",	  3,	TOKEN_VAR), 
    keywordToken_t("fun",	  3,	TOKEN_FUN), 
    keywordToken_t("if",	  2,	TOKEN_IF), 
@@ -134,11 +137,11 @@ keywordToken_t keywordsToken[] = {
 class Parser {
     public:
         std::string fileName; // 文件名
-        std::string *sourceCode; // 源码串
+        std::unique_ptr<std::string> sourceCode; // 源码串
         Token_t curToken; // 当前 Token
         Token_t preToken; // 上一个 Token
 
-        Parser(std::weak_ptr<VM> vm, std::string fileName, std::string* sourceCode, Parser* parent = nullptr);
+        Parser(std::weak_ptr<VM> vm, std::string fileName, std::unique_ptr<std::string> sourceCode, Parser* parent = nullptr);
         void getNextToken(); 
         void consumeCurToken(TokenType_e expected, const char* errMsg);
         void consumeNextToken(TokenType_e expected, const char* errMsg);
@@ -157,7 +160,7 @@ class Parser {
         static TokenType_e idOrkeyword(std::string str); 
         void moveAheadCurChar();
         bool matchNextChar(char expectedChar);
-        bool skipBlanks();
+        void skipBlanks();
         void parseId(); 
         void parseString();// 解析字符串
         void skipALine();
