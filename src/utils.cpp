@@ -8,7 +8,7 @@ std::string rootDir;
 uint32_t ceilToPowerOf2(uint32_t v) {
     v += (v == 0);
     v--;
-    // 将二进制 v中出现的第一个 '1'后面的位全置为'1'
+    // 将二进制v中从低位到高位，出现的第一个 '1'后面的位全置为'1'
     v |= v >> 1;
     v |= v >> 2;
     v |= v >> 4;
