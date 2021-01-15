@@ -1,5 +1,6 @@
 #ifndef _UTILS_H
 #define _UTILS_H
+
 #include <cstdlib>
 #include <cstdio>
 #include <cstdarg>
@@ -36,25 +37,25 @@ typedef enum {
             }\
         } while(0);
 #else
-    #define ASSERT(condition, errMsg)  ((void) 0)
+    #define ASSERT(condition, errMsg)  
 #endif
 
-void errorReport(Parser &parser, 
+void errorReport(Parser *parser, 
       ErrorType errorType, const char* fmt, ...);
 
-#define IO_ERROR(...)\
-   errorReport(NULL, ERROR_IO, __VA_ARGS__)
-#define MEM_ERROR(...)\
-   errorReport(NULL, ERROR_MEM, __VA_ARGS__)
-#define LEX_ERROR(parser, ...)\
+#define IO_ERROR(...) \
+   errorReport(nullptr, ERROR_IO, __VA_ARGS__)
+#define MEM_ERROR(...) \
+   errorReport(nullptr, ERROR_MEM, __VA_ARGS__)
+#define LEX_ERROR(parser, ...) \
    errorReport(parser, ERROR_LEX, __VA_ARGS__)
-#define COMPILE_ERROR(parser, ...)\
+#define COMPILE_ERROR(parser, ...) \
    errorReport(parser, ERROR_COMPILE, __VA_ARGS__)
-#define RUN_ERROR(...)\
-   errorReport(NULL, ERROR_RUNTIME, __VA_ARGS__)
+#define RUN_ERROR(...) \
+   errorReport(nullptr, ERROR_RUNTIME, __VA_ARGS__)
 
 uint32_t ceilToPowerOf2(uint32_t v);
 std::string* readFile(const std::string &filename);
-void runFile(const std::string &filename);
+void runFile(std::string &filename);
 
 #endif

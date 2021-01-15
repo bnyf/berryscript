@@ -1,6 +1,6 @@
+#include "utils.h"
 #include "vm.h"
 #include "parser.h"
-#include "utils.h"
 
 std::string rootDir;
 
@@ -25,12 +25,12 @@ std::string* readFile(const std::string &filename) {
     std::string *content(new std::string((std::istreambuf_iterator<char>(infile)), // input iterator, 指向 infile 文件流中的第一个字节
             std::istreambuf_iterator<char>())); // input iterator的默认构造函数，指向 end
     infile.close();
-
+    
     return content;
 }
 
 // 读取指定文件内容到 string 中
-void runFile(const std::string &filename) {
+void runFile(std::string &filename) {
     size_t idx = filename.rfind('/');
     if(idx != std::string::npos) {
         rootDir = filename.substr(idx);
@@ -56,7 +56,7 @@ void runFile(const std::string &filename) {
 }
 
 // 通用报错函数
-void errorReport(Parser &parser, 
+void errorReport(Parser *parser, 
       ErrorType errorType, const char* fmt, ...) { //... 为可变参数
    char buffer[DEFAULT_BUFFER_SIZE] = {'\0'};
    va_list ap; // char *
@@ -72,14 +72,14 @@ void errorReport(Parser &parser,
 	 break;
       case ERROR_LEX:
       case ERROR_COMPILE:
-	 fprintf(stderr, "%s:%d \"%s\"\n", parser.fileName.c_str(),
-	       parser.preToken.lineNo, buffer);
+	 fprintf(stderr, "%s:%d \"%s\"\n", parser->fileName.c_str(),
+	       parser->preToken.lineNo, buffer);
 	 break;
       case ERROR_RUNTIME:
 	    fprintf(stderr, "%s\n", buffer);
 	 break;
       default:
-	 NOT_REACHED();
+	    NOT_REACHED();
    }
    exit(1); // 非 0 为异常退出
 }

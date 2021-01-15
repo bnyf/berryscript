@@ -1,8 +1,7 @@
-#include "utils.h"
-#include "dataBuffer.h"
 #include "parser.h"
+#include "utils.h"
 
-Parser::Parser(std::weak_ptr<VM> vm, std::string fileName, std::unique_ptr<std::string> sourceCode, Parser* parent) {
+Parser::Parser(std::shared_ptr<VM> vm, std::string &fileName, std::unique_ptr<std::string> sourceCode, ObjModule_t* objModule, Parser* parent) {
     this->fileName = fileName;
     this->parent = parent;
     this->vm = vm;
@@ -14,6 +13,7 @@ Parser::Parser(std::weak_ptr<VM> vm, std::string fileName, std::unique_ptr<std::
     this->curChar = this->sourceCode->at(0);
     this->interpolationExpectRightParenNum = 0;
     this->codeSize = this->sourceCode->size();
+    this->curModule = objModule;
 }
 
 // 判断是关键字还是标志符
@@ -29,7 +29,7 @@ TokenType_e Parser::idOrkeyword(std::string str) {
     return TOKEN_ID;
 }
 
-// 获取源码下一个字符
+// 获取源码下一个字符，不移动
 char Parser::getNextChar() {
     ASSERT(nextIdx < codeSize, "outOfCodeSize");
     return sourceCode->at(nextIdx);
@@ -89,11 +89,11 @@ void Parser::skipComment() {
         }
         if(matchNextChar('*')) {
             if (!matchNextChar('/')) {   //匹配*/
-                LEX_ERROR(*this, "expect '/' after '*'!");
+                LEX_ERROR(this, "expect '/' after '*'!");
 	        }
             moveAheadCurChar();
         } else {
-            LEX_ERROR(*this, "expect '*/' before file end!");
+            LEX_ERROR(this, "expect '*/' before file end!");
         }
     }
     skipBlanks(); //注释之后有可能会有空白字符
@@ -111,7 +111,8 @@ void Parser::parseId() {
 
 // 处理当前字符串
 void Parser::parseString() {
-    DataBuffer<char> str(this->vm);
+    std::shared_ptr<VM> vm_ptr = (this->vm).lock();
+    std::string str;
     while(nextIdx < codeSize) {
         moveAheadCurChar();
         if(curChar == '"') {
@@ -119,13 +120,13 @@ void Parser::parseString() {
             break;
         }
         if(curChar == '\0')
-            LEX_ERROR(*this, "unterminated string!");
+            LEX_ERROR(this, "unterminated string!");
         if(curChar == '%') {
             if (nextIdx < codeSize && !matchNextChar('(')) {
-                LEX_ERROR(*this, "'%' should followed by '('!");
+                LEX_ERROR(this, "'%' should followed by '('!");
             }
             if (interpolationExpectRightParenNum > 0) {
-                COMPILE_ERROR(*this, "sorry, don`t support nest interpolate expression!");
+                COMPILE_ERROR(this, "sorry, don`t support nest interpolate expression!");
             }
             interpolationExpectRightParenNum = 1;
             curToken.tokenType = TOKEN_STRING_BEFORE_INTERPOLATION;
@@ -136,44 +137,101 @@ void Parser::parseString() {
                 moveAheadCurChar();
             switch (curChar) {
                 case '0': 
-                    str.bufferAdd('\0'); 
+                    str.push_back('\0'); 
                     break;
                 case 'a': 
-                    str.bufferAdd('\a'); 
+                    str.push_back('\a'); 
                     break;
                 case 'b': 
-                    str.bufferAdd('\b'); 
+                    str.push_back('\b'); 
                     break;
                 case 'f':
-                    str.bufferAdd('\f'); 
+                    str.push_back('\f'); 
                     break;
                 case 'n': 
-                    str.bufferAdd('\n'); 
+                    str.push_back('\n'); 
                     break;
                 case 'r': 
-                    str.bufferAdd('\r'); 
+                    str.push_back('\r'); 
                     break;
                 case 't': 
-                    str.bufferAdd('\t'); 
-                break;
+                    str.push_back('\t'); 
+                    break;
                 case '\"': 
-                    str.bufferAdd('\"'); 
+                    str.push_back('\"'); 
                     break;
                 case '\'': 
-                    str.bufferAdd('\''); 
+                    str.push_back('\''); 
                     break;
                 case '\\': 
-                    str.bufferAdd('\\');
+                    str.push_back('\\');
                     break;
                 default:
-                    LEX_ERROR(*this, "unsupport escape \\%c", curChar);
+                    LEX_ERROR(this, "unsupport escape \\%c", curChar);
                     break;
             }
         } else {
-            str.bufferAdd(curChar);
+            str.push_back(curChar);
         }
     }
-    str.bufferClear();
+    new ObjString(vm_ptr, str.c_str(), str.size());
+}
+
+
+//解析十六进制数字
+void Parser::parseHexNum() {
+   while (isxdigit(curChar)) {
+      moveAheadCurChar();
+   }
+}
+
+//解析八进制
+void Parser::parseOctNum() {
+   while(curChar >= '0' && curChar < '8') {
+      moveAheadCurChar();
+   }
+}
+
+//解析十进制数字
+void Parser::parseDecNum() {
+   while (isdigit(curChar)) {
+      moveAheadCurChar();
+   }
+
+   //若有小数点
+    if (curChar == '.' && isdigit(getNextChar())) {
+        moveAheadCurChar();
+        while (isdigit(curChar)) {
+            moveAheadCurChar();
+        }
+   }
+}
+
+void Parser::parseNum() {
+    if(curChar == '0' && matchNextChar('x')) { // 0x
+        parseHexNum();
+        this->curToken.length = this->nextIdx - this->curToken.startIdx - 1;
+        this->curToken.value = NUM_TO_VALUE(static_cast<double>(
+            strtol(sourceCode->substr(this->curToken.startIdx, 
+            this->curToken.length).c_str(), nullptr, 16)
+            ));
+    } else if(curChar == 'O' && isdigit(getNextChar())) { // O
+        moveAheadCurChar();
+        parseOctNum();
+        this->curToken.length = this->nextIdx - this->curToken.startIdx - 1;
+        this->curToken.value = NUM_TO_VALUE(static_cast<double>(
+            strtol(sourceCode->substr(this->curToken.startIdx, 
+            this->curToken.length).c_str(), nullptr, 8)
+            ));
+    } else {
+        parseDecNum();
+        this->curToken.length = this->nextIdx - this->curToken.startIdx - 1;
+        this->curToken.value = NUM_TO_VALUE(static_cast<double>(
+            strtod(sourceCode->substr(this->curToken.startIdx, 
+            this->nextIdx - this->curToken.startIdx - 1).c_str(), nullptr)
+            ));
+    }
+    this->curToken.tokenType = TOKEN_NUM;
 }
 
 // 获取下一个 Token
@@ -307,13 +365,15 @@ void Parser::getNextToken() {
                 //首字符是字母或'_'则是变量名或者关键字
                 if (isalpha(curChar) || curChar == '_') {
                     parseId(); // 解析变量名其余的部分
-                } else {
+                } else if(isdigit(curChar)) {
+                    parseNum();
+                }else {
                     if (curChar == '#' && matchNextChar('!')) {
                         skipALine();
                         curToken.startIdx = nextIdx - 1; // 重置下一个token起始地址
                         continue;
                     } 
-                    LEX_ERROR(*this, "unsupport char: \'%c\', quit.", curChar);
+                    LEX_ERROR(this, "unsupport char: \'%c\', quit.", curChar);
                 }
                 return;
         }
@@ -337,13 +397,13 @@ bool Parser::matchToken(TokenType_e expected) {
 // 断言当前 Token，匹配则读入下一个 Token
 void Parser::consumeCurToken(TokenType_e expected, const char* errMsg) {
     if(curToken.tokenType != expected)
-        COMPILE_ERROR(*this, errMsg);
+        COMPILE_ERROR(this, errMsg);
     getNextToken();
 }
 
-// 断言下一个 Token
+// 读入并断言下一个 Token
 void Parser::consumeNextToken(TokenType_e expected, const char* errMsg) {
     getNextToken();
     if(curToken.tokenType != expected)
-        COMPILE_ERROR(*this, errMsg);
+        COMPILE_ERROR(this, errMsg);
 }
