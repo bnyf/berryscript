@@ -6,10 +6,10 @@ VM::VM() {
     allObjects = nullptr;
 }
 
-void VM::initAndAddObjHeader(ObjHeader_t* objHeader, ObjType objType, Class_t* bsClass) {
+void VM::initAndAddObjHeader(ObjHeader* objHeader, ObjType objType, BerryClass* berryClass) {
     objHeader->type = objType;
     objHeader->isDark = false;
-    objHeader->bsClass = bsClass;    //设置meta类
+    objHeader->berryClass = berryClass;    //设置meta类
     objHeader->next = allObjects;
     allObjects = objHeader;
 }

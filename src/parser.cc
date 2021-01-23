@@ -1,7 +1,8 @@
 #include "parser.h"
 #include "utils.h"
+#include "object/obj_string.h"
 
-Parser::Parser(std::shared_ptr<VM> vm, std::string &fileName, std::unique_ptr<std::string> sourceCode, ObjModule_t* objModule, Parser* parent) {
+Parser::Parser(std::shared_ptr<VM> vm, std::string &fileName, std::unique_ptr<std::string> sourceCode, ObjModule* objModule, Parser* parent) {
     this->fileName = fileName;
     this->parent = parent;
     this->vm = vm;

@@ -40,8 +40,8 @@ typedef enum {
     #define ASSERT(condition, errMsg)  
 #endif
 
-void errorReport(Parser *parser, 
-      ErrorType errorType, const char* fmt, ...);
+void errorReport(Parser*, 
+      ErrorType, const char*, ...);
 
 #define IO_ERROR(...) \
    errorReport(nullptr, ERROR_IO, __VA_ARGS__)
@@ -54,8 +54,9 @@ void errorReport(Parser *parser,
 #define RUN_ERROR(...) \
    errorReport(nullptr, ERROR_RUNTIME, __VA_ARGS__)
 
-uint32_t ceilToPowerOf2(uint32_t v);
-std::string* readFile(const std::string &filename);
-void runFile(std::string &filename);
+uint32_t ceilToPowerOf2(uint32_t);
+std::string* readFile(const std::string&);
+void runFile(std::string&);
+uint32_t hashString(const char*, uint32_t);
 
 #endif

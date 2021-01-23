@@ -11,4 +11,5 @@ add_definitions("-Wall -g")
 include_directories(src src/object)
 aux_source_directory(src DIR_SRCS)
 aux_source_directory(src/object DIR_SRCS_OBJECT)
+
 add_executable(bs ${DIR_SRCS} ${DIR_SRCS_OBJECT})

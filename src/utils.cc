@@ -44,6 +44,9 @@ void runFile(std::string &filename) {
     vm->curParser = std::make_shared<Parser>(vm, filename, std::move(content));
     std::shared_ptr<Parser> &parser = vm->curParser;
 
+    // executeModule(vm, OBJ_TO_VALUE(newObjString(vm, path, strlen(path))), sourceCode);
+
+
     // 测试词法分析
     #include "token.list"
     while(parser->curToken.tokenType != TOKEN_EOF) {
@@ -53,6 +56,7 @@ void runFile(std::string &filename) {
         tokenArray[curToken.tokenType] << " [" << \
         parser->sourceCode->substr(curToken.startIdx, curToken.length) << "]\n";
     }
+
 }
 
 // 通用报错函数
@@ -82,4 +86,14 @@ void errorReport(Parser *parser,
 	    NOT_REACHED();
    }
    exit(1); // 非 0 为异常退出
+}
+
+// fnv-1a算法
+uint32_t hashString(const char* str, uint32_t length) {
+   uint32_t hashCode = 2166136261;
+   for(int i=0;i<length;++i) {
+      hashCode ^= str[i];
+      hashCode *= 16777619;
+   }
+   return hashCode;
 }

@@ -3,7 +3,8 @@
 #include <cstdint>
 #include <cctype>
 #include <string>
-#include "object/obj_meta.h"
+#include "object/header.h"
+#include "object/obj_class.h"
 
 class VM;
 template<class T>
@@ -97,7 +98,7 @@ typedef struct Token_s{
     uint32_t startIdx; //token 起始位置下标
     uint32_t length;
     uint32_t lineNo;
-    Value_t value;
+    Value value;
 } Token_t;
 
 //关键字(保留字)结构体
@@ -142,9 +143,9 @@ class Parser {
         std::unique_ptr<std::string> sourceCode; // 源码串
         Token_t curToken; // 当前 Token
         Token_t preToken; // 上一个 Token
-        ObjModule_t* curModule;
+        ObjModule* curModule;
 
-        Parser(std::shared_ptr<VM> vm, std::string &fileName, std::unique_ptr<std::string> sourceCode, ObjModule_t *objmodule = nullptr, Parser* parent = nullptr);
+        Parser(std::shared_ptr<VM> vm, std::string &fileName, std::unique_ptr<std::string> sourceCode, ObjModule *objmodule = nullptr, Parser* parent = nullptr);
         void getNextToken(); 
         void consumeCurToken(TokenType_e expected, const char* errMsg);
         void consumeNextToken(TokenType_e expected, const char* errMsg);
