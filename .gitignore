@@ -1,3 +1,4 @@
 spr
 *.debug
 .vscode
+.o
