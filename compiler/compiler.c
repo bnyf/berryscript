@@ -11,13 +11,13 @@ struct compileUnit {
    // 所编译的函数
    ObjFn* fn;
 
-   //作用域中允许的局部变量的个量上限
+   //作用域中允许的局部变量的个量上限, 存储变量的名称
    LocalVar localVars[MAX_LOCAL_VAR_NUM];
 
    //已分配的局部变量个数
    uint32_t localVarNum;
 
-   //记录本层函数所引用的upvalue
+   //记录本层函数所引用的upvalue，upvalue是使用上层函数的变量
    Upvalue upvalues[MAX_UPVALUE_NUM];
 
   //此项表示当前正在编译的代码所处的作用域,
@@ -46,6 +46,7 @@ typedef enum {
    VAR_SCOPE_MODULE    //模块变量
 } VarScopeType;   //标识变量作用域
 
+// 编译时用的存储变量的数据结构
 typedef struct {
    VarScopeType scopeType;   //变量的作用域
    //根据scodeType的值,
@@ -131,15 +132,14 @@ static void initCompileUnit(Parser* parser, CompileUnit* cu,
 
    } else {   //若是内层单元,属局部作用域
       if (isMethod) {  //若是类中的方法
-	 //如果是类的方法就设定隐式"this"为第0个局部变量,即实例对象,
-	 //它是方法(消息)的接收者.this这种特殊对象被处理为局部变量
-	 cu->localVars[0].name = "this"; 
-	 cu->localVars[0].length = 4; 
-
+         //如果是类的方法就设定隐式"this"为第0个局部变量,即实例对象,
+         //它是方法(消息)的接收者.this这种特殊对象被处理为局部变量
+         cu->localVars[0].name = "this"; 
+         cu->localVars[0].length = 4; 
       } else {	  //若为普通函数
-	 //空出第0个局部变量,保持统一
-	 cu->localVars[0].name = NULL; 
-	 cu->localVars[0].length = 0; 
+         //空出第0个局部变量,保持统一
+         cu->localVars[0].name = NULL; 
+         cu->localVars[0].length = 0; 
       }
 
       //第0个局部变量的特殊性使其作用域为模块级别
@@ -208,15 +208,15 @@ int defineModuleVar(VM* vm, ObjModule* objModule,
    if (length > MAX_ID_LEN) {
       //也许name指向的变量名并不以'\0'结束,将其从源码串中拷贝出来
       char id[MAX_ID_LEN] = {'\0'};
-      memcpy(id, name, length);
+      memcpy(id, name, MAX_ID_LEN - 1);
 
       //本函数可能是在编译源码文件之前调用的,
       //那时还没有创建parser, 因此报错要分情况:
       if (vm->curParser != NULL) {   //编译源码文件
-	 COMPILE_ERROR(vm->curParser, 
-	       "length of identifier \"%s\" should be no more than %d", id, MAX_ID_LEN);
+         COMPILE_ERROR(vm->curParser, 
+            "length of identifier \"%s\" should be no more than %d", id, MAX_ID_LEN);
       } else {   // 编译源码前调用,比如加载核心模块时会调用本函数
-	 MEM_ERROR("length of identifier \"%s\" should be no more than %d", id, MAX_ID_LEN);
+	      MEM_ERROR("length of identifier \"%s\" should be no more than %d", id, MAX_ID_LEN);
       }
    }
 
@@ -258,76 +258,76 @@ static uint32_t sign2String(Signature* sign, char* buf) {
    switch (sign->type) {
       //SIGN_GETTER形式:xxx,无参数,上面memcpy已完成
       case SIGN_GETTER:
-	 break;
+	      break;
 
       //SIGN_SETTER形式: xxx=(_),之前已完成xxx
       case SIGN_SETTER: 
-	 buf[pos++] = '=';
-	 //下面添加=右边的赋值,只支持一个赋值
-	 buf[pos++] = '(';
-	 buf[pos++] = '_';
-	 buf[pos++] = ')';
-	 break;
+         buf[pos++] = '=';
+         //下面添加=右边的赋值,只支持一个赋值
+         buf[pos++] = '(';
+         buf[pos++] = '_';
+         buf[pos++] = ')';
+         break;
 
       //SIGN_METHOD和SIGN_CONSTRUCT形式:xxx(_,...)
       case SIGN_CONSTRUCT:
       case SIGN_METHOD: {
-	 buf[pos++] = '(';
-	 uint32_t idx = 0;
-	 while (idx < sign->argNum) {
-	    buf[pos++] = '_';  
-	    buf[pos++] = ',';  
-	    idx++;
-	 }
+         buf[pos++] = '(';
+         uint32_t idx = 0;
+         while (idx < sign->argNum) {
+            buf[pos++] = '_';  
+            buf[pos++] = ',';  
+            idx++;
+         }
 
-	 if (idx == 0) { //说明没有参数
-	    buf[pos++] = ')';
-	 } else { //用rightBracket覆盖最后的','
-	    buf[pos - 1] = ')';
-	 }
-	 break;
+         if (idx == 0) { //说明没有参数
+            buf[pos++] = ')';
+         } else { //用rightBracket覆盖最后的','
+            buf[pos - 1] = ')';
+         }
+	      break;
       }
 
       //SIGN_SUBSCRIPT形式:xxx[_,...]
       case SIGN_SUBSCRIPT: {
-	 buf[pos++] = '[';
-	 uint32_t idx = 0;
-	 while (idx < sign->argNum) {
-	    buf[pos++] = '_';  
-	    buf[pos++] = ',';  
-	    idx++;
-	 }
-	 if (idx == 0) { //说明没有参数
-	    buf[pos++] = ']';
-	 } else { //用rightBracket覆盖最后的','
-	    buf[pos - 1] = ']';
-	 }
-	 break;
+         buf[pos++] = '[';
+         uint32_t idx = 0;
+         while (idx < sign->argNum) {
+            buf[pos++] = '_';  
+            buf[pos++] = ',';  
+            idx++;
+	      }
+         if (idx == 0) { //说明没有参数
+            buf[pos++] = ']';
+         } else { //用rightBracket覆盖最后的','
+            buf[pos - 1] = ']';
+         }
+         break;
       }
 
       //SIGN_SUBSCRIPT_SETTER形式:xxx[_,...]=(_)
       case SIGN_SUBSCRIPT_SETTER: {
-	 buf[pos++] = '[';
-	 uint32_t idx = 0;
-	 //argNum包括了等号右边的1个赋值参数,
-	 //这里是在处理等号左边subscript中的参数列表,因此减1.
-	 //后面专门添加该参数
-	 while (idx < sign->argNum - 1) {
-	    buf[pos++] = '_';  
-	    buf[pos++] = ',';  
-	    idx++;
-	 }
-	 if (idx == 0) { //说明没有参数
-	    buf[pos++] = ']';
-	 } else { //用rightBracket覆盖最后的','
-	    buf[pos - 1] = ']';
-	 }
+         buf[pos++] = '[';
+         uint32_t idx = 0;
+         //argNum包括了等号右边的1个赋值参数,
+         //这里是在处理等号左边subscript中的参数列表,因此减1.
+         //后面专门添加该参数
+         while (idx < sign->argNum - 1) {
+            buf[pos++] = '_';  
+            buf[pos++] = ',';  
+            idx++;
+         }
+         if (idx == 0) { //说明没有参数
+            buf[pos++] = ']';
+         } else { //用rightBracket覆盖最后的','
+            buf[pos - 1] = ']';
+         }
 
-	 //下面为等号右边的参数构造签名部分
-	 buf[pos++] = '=';  
-	 buf[pos++] = '(';
-	 buf[pos++] = '_';
-	 buf[pos++] = ')';
+         //下面为等号右边的参数构造签名部分
+         buf[pos++] = '=';  
+         buf[pos++] = '(';
+         buf[pos++] = '_';
+         buf[pos++] = ')';
       }
    }
 
@@ -358,6 +358,7 @@ static int declareLocalVar(CompileUnit* cu, const char* name, uint32_t length) {
 
       //只在当前作用域中查找同名变量,
       //如果到了父作用域就退出,减少没必要的遍历
+      //localVarNum只增加，不减少，所以会到父作用域
       if (var->scopeDepth < cu->scopeDepth) {
          break;
       }
@@ -376,7 +377,7 @@ static int declareLocalVar(CompileUnit* cu, const char* name, uint32_t length) {
 
 //根据作用域声明变量
 static int declareVariable(CompileUnit* cu, const char* name, uint32_t length) {
-   //若当前是模块作用域就声明为模块变量
+   //若当前是模块作用域就声明为模块变量，值为NULL
    if (cu->scopeDepth == -1) {
       int index = defineModuleVar(cu->curParser->vm,
 	    cu->curParser->curModule, name, length, VT_TO_VALUE(VT_NULL));
@@ -424,11 +425,11 @@ static uint32_t discardLocalVar(CompileUnit* cu, int scopeDepth) {
    //跳出scodeDepth时内层也没用了,要回收其局部变量.
    while (localIdx >= 0 && cu->localVars[localIdx].scopeDepth >= scopeDepth) {
       if (cu->localVars[localIdx].isUpvalue) {
-	 //如果此局量是其内层的upvalue就将其关闭
-	 writeByte(cu, OPCODE_CLOSE_UPVALUE); 
+         //如果此局量是其内层的upvalue就将其关闭
+         writeByte(cu, OPCODE_CLOSE_UPVALUE); 
       } else {
-	 //否则就弹出该变量回收空间
-	 writeByte(cu, OPCODE_POP);
+         //否则就弹出该变量回收空间
+         writeByte(cu, OPCODE_POP);
       }
       localIdx--; 
    } 
@@ -461,7 +462,7 @@ static void leaveScope(CompileUnit* cu) {
 static CompileUnit* getEnclosingClassBKUnit(CompileUnit* cu) {
    while (cu != NULL) {
       if (cu->enclosingClassBK != NULL) {
-	 return cu;
+	      return cu;
       }
       cu = cu->enclosingUnit;
    }
@@ -484,7 +485,7 @@ static void processArgList(CompileUnit* cu, Signature* sign) {
 	 cu->curParser->curToken.type != TOKEN_RIGHT_BRACKET, "empty argument list!");
    do {
       if (++sign->argNum > MAX_ARG_NUM) {
-	 COMPILE_ERROR(cu->curParser, "the max number of argument is %d!", MAX_ARG_NUM); 
+	      COMPILE_ERROR(cu->curParser, "the max number of argument is %d!", MAX_ARG_NUM); 
       }
       expression(cu, BP_LOWEST);  //加载实参
    } while (matchToken(cu->curParser, TOKEN_COMMA)); 
@@ -503,7 +504,7 @@ static void processParaList(CompileUnit* cu, Signature* sign) {
    } while (matchToken(cu->curParser, TOKEN_COMMA));
 }
 
-//尝试编译setter
+//尝试编译setter 
 static bool trySetter(CompileUnit* cu, Signature* sign) {
    if (!matchToken(cu->curParser, TOKEN_ASSIGN)) {
       return false;
@@ -539,38 +540,38 @@ static void idMethodSignature(CompileUnit* cu, Signature* sign) {
 
       //构造函数后面不能接'=',即不能成为setter
       if (matchToken(cu->curParser, TOKEN_ASSIGN)) {
-	 COMPILE_ERROR(cu->curParser, "constructor shouldn`t be setter!");
+	      COMPILE_ERROR(cu->curParser, "constructor shouldn`t be setter!");
       }
 
       //构造函数必须是标准的method,即new(_,...),new后面必须接'('
       if (!matchToken(cu->curParser, TOKEN_LEFT_PAREN)) {
-	 COMPILE_ERROR(cu->curParser, "constructor must be method!");
+	      COMPILE_ERROR(cu->curParser, "constructor must be method!");
       }
 
       sign->type = SIGN_CONSTRUCT;
 
       //无参数就直接返回
       if (matchToken(cu->curParser, TOKEN_RIGHT_PAREN)) {
-	 return;
+	      return;
       }
 
    } else {  //若不是构造函数
 
       if (trySetter(cu, sign)) {
-	 //若是setter,此时已经将type改为了setter,直接返回
-	 return;
+         //若是setter,此时已经将type改为了setter,直接返回
+         return;
       }
 
       if (!matchToken(cu->curParser, TOKEN_LEFT_PAREN)) {
-	 //若后面没有'('说明是getter,type已在开头置为getter,直接返回
-	 return;
+         //若后面没有'('说明是getter,type已在开头置为getter,直接返回
+         return;
       }
 
       //至此type应该为一般形式的SIGN_METHOD,形式为name(paralist)
       sign->type = SIGN_METHOD;
       //直接匹配到')'，说明形参为空
       if (matchToken(cu->curParser, TOKEN_RIGHT_PAREN)) {
-	 return;
+	       return;
       }
    }
 
@@ -579,12 +580,14 @@ static void idMethodSignature(CompileUnit* cu, Signature* sign) {
    consumeCurToken(cu->curParser, TOKEN_RIGHT_PAREN, "expect ')' after parameter list!");
 }
 
+//类中的运算符，重载运算符
 //为单运算符方法创建签名
 static void unaryMethodSignature(CompileUnit* cu UNUSED, Signature* sign UNUSED) {
    //名称部分在调用前已经完成,只修改类型
    sign->type = SIGN_GETTER;
 }
 
+//类中的运算符，重载运算符
 //为中缀运算符创建签名
 static void infixMethodSignature(CompileUnit* cu, Signature* sign) {
    //在类中的运算符都是方法,类型为SIGN_METHOD
@@ -597,7 +600,8 @@ static void infixMethodSignature(CompileUnit* cu, Signature* sign) {
    declareVariable(cu, cu->curParser->preToken.start, cu->curParser->preToken.length);
    consumeCurToken(cu->curParser, TOKEN_RIGHT_PAREN, "expect ')' after parameter!");
 }
-
+   
+//类中的运算符，重载运算符
 //为既做单运算符又做中缀运算符的符号方法创建签名
 static void mixMethodSignature(CompileUnit* cu, Signature* sign) {
    //假设是单运算符方法,因此默认为getter
@@ -693,7 +697,7 @@ static Variable getVarFromLocalOrUpvalue(CompileUnit* cu, const char* name, uint
 }
 
 //定义变量为其赋值
-static void defineVariable(CompileUnit* cu, uint32_t index) {
+static void defineVar(CompileUnit* cu, uint32_t index) {
    //局部变量已存储到栈中,无须处理.
    //模块变量并不存储到栈中,因此将其写回相应位置
    if (cu->scopeDepth == -1) {
@@ -723,19 +727,19 @@ static Variable findVariable(CompileUnit* cu, const char* name, uint32_t length)
 static void emitLoadVariable(CompileUnit* cu, Variable var) {
    switch (var.scopeType) {
       case VAR_SCOPE_LOCAL: 
-	 //生成加载局部变量入栈的指令
-	 writeOpCodeByteOperand(cu, OPCODE_LOAD_LOCAL_VAR, var.index);
-	 break;
+         //生成加载局部变量入栈的指令
+         writeOpCodeByteOperand(cu, OPCODE_LOAD_LOCAL_VAR, var.index);
+         break;
       case VAR_SCOPE_UPVALUE: 
-	 //生成加载upvalue到栈的指令
-	 writeOpCodeByteOperand(cu, OPCODE_LOAD_UPVALUE, var.index);
-	 break;
+         //生成加载upvalue到栈的指令
+         writeOpCodeByteOperand(cu, OPCODE_LOAD_UPVALUE, var.index);
+         break;
       case VAR_SCOPE_MODULE: 
-	 //生成加载模块变量到栈的指令
-	 writeOpCodeShortOperand(cu, OPCODE_LOAD_MODULE_VAR, var.index);
-	 break;
+         //生成加载模块变量到栈的指令
+         writeOpCodeShortOperand(cu, OPCODE_LOAD_MODULE_VAR, var.index);
+         break;
       default:
-	 NOT_REACHED();
+	      NOT_REACHED();
    }
 }
 
@@ -781,7 +785,7 @@ static void compileBlock(CompileUnit* cu) {
    //进入本函数前已经读入了'{'
    while (!matchToken(cu->curParser, TOKEN_RIGHT_BRACE)) {
       if (PEEK_TOKEN(cu->curParser) == TOKEN_EOF) {
-	 COMPILE_ERROR(cu->curParser, "expect '}' at the end of block!");  
+         COMPILE_ERROR(cu->curParser, "expect '}' at the end of block!");  
       }
       compileProgram(cu);
    }
@@ -854,8 +858,8 @@ static void emitGetterMethodCall(CompileUnit* cu, Signature* sign, OpCode opCode
 
       //若后面不是')',说明有参数列表
       if (!matchToken(cu->curParser, TOKEN_RIGHT_PAREN)) {
-	 processArgList(cu, &newSign);
-	 consumeCurToken(cu->curParser, TOKEN_RIGHT_PAREN, "expect ')' after argument list!");
+         processArgList(cu, &newSign);
+         consumeCurToken(cu->curParser, TOKEN_RIGHT_PAREN, "expect ')' after argument list!");
       } 
    }
 
@@ -892,7 +896,7 @@ static void emitGetterMethodCall(CompileUnit* cu, Signature* sign, OpCode opCode
    //如果是在子类构造函数中
    if (sign->type == SIGN_CONSTRUCT) {
       if (newSign.type != SIGN_METHOD) {
-	 COMPILE_ERROR(cu->curParser, "the form of supercall is super() or super(arguments)");
+	      COMPILE_ERROR(cu->curParser, "the form of supercall is super() or super(arguments)");
       }
       newSign.type = SIGN_CONSTRUCT;
    }
@@ -1268,14 +1272,14 @@ static void id(CompileUnit* cu, bool canAssign) {
       Variable var;
       var.scopeType = VAR_SCOPE_MODULE;
       var.index = getIndexFromSymbolTable(
-	 &cu->curParser->curModule->moduleVarName, id, strlen(id));
+	      &cu->curParser->curModule->moduleVarName, id, strlen(id));
       if (var.index == -1) {
-	 memmove(id, name.start, name.length);
-	 id[name.length] = '\0';
-	 COMPILE_ERROR(cu->curParser, "Undefined function: '%s'!", id); 
+         memmove(id, name.start, name.length);
+         id[name.length] = '\0';
+         COMPILE_ERROR(cu->curParser, "Undefined function: '%s'!", id); 
       }
 
-// 1 把模块变量即函数闭包加载到栈
+      // 1 把模块变量即函数闭包加载到栈
       emitLoadVariable(cu, var);
 
       Signature sign;
@@ -1288,15 +1292,14 @@ static void id(CompileUnit* cu, bool canAssign) {
       sign.length = 4;
       sign.argNum = 0; 
 
-      //若后面不是')',说明有参数列表
+      //2. 若后面不是')',说明有参数列表，压入实参
       if (!matchToken(cu->curParser, TOKEN_RIGHT_PAREN)) {
-// 2 压入实参
-	 processArgList(cu, &sign);
-	 consumeCurToken(cu->curParser, TOKEN_RIGHT_PAREN,
+         processArgList(cu, &sign);
+         consumeCurToken(cu->curParser, TOKEN_RIGHT_PAREN,
 	       "expect ')' after argument list!");
       } 
 
-// 3 生成调用指令以调用函数
+      // 3 生成调用指令以调用函数
       emitCallBySignature(cu, &sign, OPCODE_CALL0);
 
    } else {   //否则按照各种变量来处理
@@ -1305,73 +1308,73 @@ static void id(CompileUnit* cu, bool canAssign) {
       Variable var = getVarFromLocalOrUpvalue(cu,
 	       name.start, name.length);
       if (var.index != -1) {
-	 emitLoadOrStoreVariable(cu, canAssign, var);
-	 return;
+         emitLoadOrStoreVariable(cu, canAssign, var);
+         return;
       }
    
       //按照实例域来处理
       if (classBK != NULL) {
-	 int fieldIndex = getIndexFromSymbolTable(&classBK->fields, 
-	       name.start, name.length);
-	 if (fieldIndex != -1) {
-	    if (classBK->inStatic) {
-	       COMPILE_ERROR(cu->curParser,
-		     "instance field should not be used in static method!");
-	    }
+         int fieldIndex = getIndexFromSymbolTable(&classBK->fields, 
+               name.start, name.length);
+         if (fieldIndex != -1) {
+            if (classBK->inStatic) {
+               COMPILE_ERROR(cu->curParser,
+               "instance field should not be used in static method!");
+            }
 
-	    bool isRead = true;
-	    if (canAssign && matchToken(cu->curParser, TOKEN_ASSIGN)) {
-	       isRead = false;
-	       expression(cu, BP_LOWEST);
-	    }
+            bool isRead = true;
+            if (canAssign && matchToken(cu->curParser, TOKEN_ASSIGN)) {
+               isRead = false;
+               expression(cu, BP_LOWEST);
+            }
 
-	    //如果当前正在编译类方法,则直接在该实例对象中加载field
-	    if (cu->enclosingUnit != NULL) {
-	       writeOpCodeByteOperand(cu, 
-		     isRead ? OPCODE_LOAD_THIS_FIELD : OPCODE_STORE_THIS_FIELD, fieldIndex);
-	    } else {
-	       emitLoadThis(cu);
-	       writeOpCodeByteOperand(cu, 
-		     isRead ? OPCODE_LOAD_FIELD : OPCODE_STORE_FIELD, fieldIndex);
-	    }
-	    return; 
-	 }
+            //如果当前正在编译类方法,则直接在该实例对象中加载field
+            if (cu->enclosingUnit != NULL) {
+               writeOpCodeByteOperand(cu, 
+               isRead ? OPCODE_LOAD_THIS_FIELD : OPCODE_STORE_THIS_FIELD, fieldIndex);
+            } else {
+               emitLoadThis(cu);
+               writeOpCodeByteOperand(cu, 
+               isRead ? OPCODE_LOAD_FIELD : OPCODE_STORE_FIELD, fieldIndex);
+            }
+            return; 
+         }
       }
 
       //按照静态域查找
       if (classBK != NULL) {
-	 char* staticFieldId = ALLOCATE_ARRAY(cu->curParser->vm, char, MAX_ID_LEN);
-	 memset(staticFieldId, 0, MAX_ID_LEN);
-	 uint32_t staticFieldIdLen;
-	 char* clsName = classBK->name->value.start;
-	 uint32_t clsLen = classBK->name->value.length;
+         char* staticFieldId = ALLOCATE_ARRAY(cu->curParser->vm, char, MAX_ID_LEN);
+         memset(staticFieldId, 0, MAX_ID_LEN);
+         uint32_t staticFieldIdLen;
+         char* clsName = classBK->name->value.start;
+         uint32_t clsLen = classBK->name->value.length;
 
-	 //各类中静态域的名称以"Cls类名 静态域名"来命名
-	 memmove(staticFieldId, "Cls", 3);
-	 memmove(staticFieldId + 3, clsName, clsLen);
-	 memmove(staticFieldId + 3 + clsLen, " ", 1);
-	 const char* tkName = name.start;
-	 uint32_t tkLen = name.length;
-	 memmove(staticFieldId + 4 + clsLen, tkName, tkLen);
-	 staticFieldIdLen = strlen(staticFieldId);
-	 var = getVarFromLocalOrUpvalue(cu, staticFieldId, staticFieldIdLen);
+         //各类中静态域的名称以"Cls类名 静态域名"来命名
+         memmove(staticFieldId, "Cls", 3);
+         memmove(staticFieldId + 3, clsName, clsLen);
+         memmove(staticFieldId + 3 + clsLen, " ", 1);
+         const char* tkName = name.start;
+         uint32_t tkLen = name.length;
+         memmove(staticFieldId + 4 + clsLen, tkName, tkLen);
+         staticFieldIdLen = strlen(staticFieldId);
+         var = getVarFromLocalOrUpvalue(cu, staticFieldId, staticFieldIdLen);
 
-	 DEALLOCATE_ARRAY(cu->curParser->vm, staticFieldId, MAX_ID_LEN);
-	 if (var.index != -1) {
-	    emitLoadOrStoreVariable(cu, canAssign, var);
-	    return;
-	 }
+         DEALLOCATE_ARRAY(cu->curParser->vm, staticFieldId, MAX_ID_LEN);
+         if (var.index != -1) {
+            emitLoadOrStoreVariable(cu, canAssign, var);
+            return;
+         }
       }
 
       //如果以上未找到同名变量,有可能该标识符是同类中的其它方法调用
       //方法规定以小写字符开头
       if (classBK != NULL && isLocalName(name.start)) {
-	 emitLoadThis(cu);    //确保args[0]是this对象,以便查找到方法
-	 //因为类可能尚未编译完,未统计完所有方法,
-	 //故此时无法判断方法是否为未定义,留待运行时检测
-	 emitMethodCall(cu, name.start, 
-	       name.length, OPCODE_CALL0, canAssign);
-	 return;
+         emitLoadThis(cu);    //确保args[0]是this对象,以便查找到方法
+         //因为类可能尚未编译完,未统计完所有方法,
+         //故此时无法判断方法是否为未定义,留待运行时检测
+         emitMethodCall(cu, name.start, 
+               name.length, OPCODE_CALL0, canAssign);
+         return;
       }
 
       //按照模块变量处理
@@ -1379,23 +1382,23 @@ static void id(CompileUnit* cu, bool canAssign) {
       var.index = getIndexFromSymbolTable(
 	    &cu->curParser->curModule->moduleVarName, name.start, name.length);
       if (var.index == -1) {
-	 //模块变量属于模块作用域,若当前引用处之前未定义该模块变量,
-	//说不定在后面有其定义,因此暂时先声明它,待模块统计完后再检查
+         //模块变量属于模块作用域,若当前引用处之前未定义该模块变量,
+         //说不定在后面有其定义,因此暂时先声明它,待模块统计完后再检查
 
-	 //用关键字'fun'定义的函数是以前缀"Fn "后接"函数名"做为模块变量
-	 //下面加上"Fn "前缀按照函数名重新查找
-	 char fnName[MAX_SIGN_LEN + 4] = {'\0'};
-	 memmove(fnName, "Fn ", 3);
-	 memmove(fnName + 3, name.start, name.length);
-	 var.index = getIndexFromSymbolTable(
-	    &cu->curParser->curModule->moduleVarName, fnName, strlen(fnName));
-	 
-	 //若不是函数名,那可能是该模块变量定义在引用处的后面,
-	 //先将行号做为该变量值去声明
-	 if (var.index == -1) {
-	    var.index = declareModuleVar(cu->curParser->vm, cu->curParser->curModule, 
-		  name.start, name.length, NUM_TO_VALUE(cu->curParser->curToken.lineNo)); 
-	 }
+         //用关键字'fun'定义的函数是以前缀"Fn "后接"函数名"做为模块变量
+         //下面加上"Fn "前缀按照函数名重新查找
+         char fnName[MAX_SIGN_LEN + 4] = {'\0'};
+         memmove(fnName, "Fn ", 3);
+         memmove(fnName + 3, name.start, name.length);
+         var.index = getIndexFromSymbolTable(
+            &cu->curParser->curModule->moduleVarName, fnName, strlen(fnName));
+         
+         //若不是函数名,那可能是该模块变量定义在引用处的后面,
+         //先将行号做为该变量值去声明
+         if (var.index == -1) {
+            var.index = declareModuleVar(cu->curParser->vm, cu->curParser->curModule, 
+            name.start, name.length, NUM_TO_VALUE(cu->curParser->curToken.lineNo)); 
+         }
       }
       emitLoadOrStoreVariable(cu, canAssign, var);
    }
@@ -1558,7 +1561,7 @@ static void compileVarDefinition(CompileUnit* cu, bool isStatic) {
             int index = declareLocalVar(cu, staticFieldId, staticFieldIdLen);
             writeOpCode(cu, OPCODE_PUSH_NULL);
             ASSERT(cu->scopeDepth == 0, "should in class scope!");
-            defineVariable(cu, index);
+            defineVar(cu, index);
 
             //静态域可初始化
             Variable var = findVariable(cu, staticFieldId, staticFieldIdLen);
@@ -1612,7 +1615,7 @@ static void compileVarDefinition(CompileUnit* cu, bool isStatic) {
    }
 
    uint32_t index = declareVariable(cu, name.start, name.length);
-   defineVariable(cu, index);
+   defineVar(cu, index);
 }
 
 //编译if语句
@@ -2136,6 +2139,7 @@ static void compileClassDefinition(CompileUnit* cu) {
    classVar.scopeType = VAR_SCOPE_MODULE;
    consumeCurToken(cu->curParser, TOKEN_ID, 
 	 "keyword class should follow by class name!");  //读入类名
+   // objModule中定义值为NULL的全局变量
    classVar.index = declareVariable(cu, 
 	 cu->curParser->preToken.start, cu->curParser->preToken.length);
 
@@ -2157,9 +2161,7 @@ static void compileClassDefinition(CompileUnit* cu) {
   
    //虚拟机执行完OPCODE_CREATE_CLASS后,栈顶留下了创建好的类,
    //因此现在可以用该类为之前声明的类名className赋值
-   if (cu->scopeDepth == -1) {
-      emitStoreModuleVar(cu, classVar.index);
-   }
+   emitStoreModuleVar(cu, classVar.index);
 
    ClassBookKeep classBK;
    classBK.name = className;
@@ -2217,7 +2219,7 @@ static void compileFunctionDefinition(CompileUnit* cu) {
   //    但是传统上
   // (二)
   //    函数定义的形式是:
-  //       function 函数名(形参) {
+  //       fun 函数名(形参) {
   //          函数体代码	 
   //       }
   //    函数调用形式是:
@@ -2268,7 +2270,7 @@ static void compileFunctionDefinition(CompileUnit* cu) {
 #endif
 
    //将栈顶的闭包写入变量
-   defineVariable(cu, fnNameIndex);
+   defineVar(cu, fnNameIndex);
 }
 
 //编译import导入
@@ -2343,7 +2345,7 @@ static void compileImport(CompileUnit* cu) {
 
       //此时栈顶是system.getModuleVariable("foo", "bar1")的返回值,
       //即导入的模块变量的值 下面将其同步到相应变量中
-      defineVariable(cu, varIdx); 
+      defineVar(cu, varIdx); 
    } while (matchToken(cu->curParser, TOKEN_COMMA));
 }
 

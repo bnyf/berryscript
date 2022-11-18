@@ -1674,8 +1674,8 @@ int getIndexFromSymbolTable(SymbolTable* table, const char* symbol, uint32_t len
    uint32_t index = 0;
    while (index < table->count) {
       if (length == table->datas[index].length &&
-	    memcmp(table->datas[index].str, symbol, length) == 0) {
-	 return index;
+      memcmp(table->datas[index].str, symbol, length) == 0) {
+	      return index;
       }
       index++;
    }

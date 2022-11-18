@@ -481,7 +481,7 @@ VMResult executeInstruction(VM* vm, register ObjThread* curThread) {
 		//在函数bindMethodAndPatch中实现的基类的绑定
 		class = VALUE_TO_CLASS(fn->constants.datas[READ_SHORT()]);
 
-		invokeMethod:
+	invokeMethod:
 		if ((uint32_t)index > class->methods.count || 
 			(method = &class->methods.datas[index])->type == MT_NONE) {
 			RUN_ERROR("method \"%s\" not found!", vm->allMethodNames.datas[index].str);
@@ -524,23 +524,23 @@ VMResult executeInstruction(VM* vm, register ObjThread* curThread) {
 			break;
 
 			case MT_SCRIPT:
-			STORE_CUR_FRAME();
-			createFrame(vm, curThread, (ObjClosure*)method->obj, argNum);
-			LOAD_CUR_FRAME();   //加载最新的frame
-			break;
+				STORE_CUR_FRAME();
+				createFrame(vm, curThread, (ObjClosure*)method->obj, argNum);
+				LOAD_CUR_FRAME();   //加载最新的frame
+				break;
 
 			case MT_FN_CALL:
-			ASSERT(VALUE_IS_OBJCLOSURE(args[0]), "instance must be a closure!");
-			ObjFn* objFn = VALUE_TO_OBJCLOSURE(args[0])->fn;
-			//-1是去掉实例this
-			if (argNum - 1 < objFn->argNum) {
-			RUN_ERROR("arguments less");
-			}
+				ASSERT(VALUE_IS_OBJCLOSURE(args[0]), "instance must be a closure!");
+				ObjFn* objFn = VALUE_TO_OBJCLOSURE(args[0])->fn;
+				//-1是去掉实例this
+				if (argNum - 1 < objFn->argNum) {
+				RUN_ERROR("arguments less");
+				}
 
-			STORE_CUR_FRAME();
-			createFrame(vm, curThread, VALUE_TO_OBJCLOSURE(args[0]), argNum);
-			LOAD_CUR_FRAME();   //加载最新的frame
-			break;
+				STORE_CUR_FRAME();
+				createFrame(vm, curThread, VALUE_TO_OBJCLOSURE(args[0]), argNum);
+				LOAD_CUR_FRAME();   //加载最新的frame
+				break;
 
 			default:
 			NOT_REACHED();
@@ -792,7 +792,7 @@ VMResult executeInstruction(VM* vm, register ObjThread* curThread) {
 			fieldNum, VALUE_TO_CLASS(superClass));
 
 		//类存储于栈底
-		stackStart[0] = OBJ_TO_VALUE(class);
+		stackStart[0] = OBJ_TO_VALUE(class); 
 
 		LOOP();
       }
