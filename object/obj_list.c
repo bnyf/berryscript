@@ -1,7 +1,7 @@
 #include "obj_list.h"
 
 //新建list对象,元素个数为elementNum
-ObjList* newObjList(VM* vm, uint32_t elementNum) {
+Value* newObjList(VM* vm, uint32_t elementNum) {
    //存储list元素的缓冲区
    Value* elementArray = NULL;
 
@@ -13,8 +13,8 @@ ObjList* newObjList(VM* vm, uint32_t elementNum) {
 
    objList->elements.datas = elementArray;
    objList->elements.capacity = objList->elements.count = elementNum;
-   initObjHeader(vm, &objList->objHeader, OT_LIST, vm->listClass);
-   return objList;
+
+   return initValue(vm, VT_LIST, objList);
 }
 
 //在objlist中索引为index处插入value, 类似于list[index] = value

@@ -1,17 +1,17 @@
 class Manager {
-    var bonus
+	 var bonus
 
-    new(b) {
-        bonus = b
-    }
+	 new(b) {
+		  bonus = b
+	 }
 
-    set_bonus(b) {
-        bonus = b
-    }
+	 set_bonus(b) {
+		  bonus = b
+	 }
 
-    salary {
-        return bonus
-    }
+	 salary {
+		  return bonus
+	 }
 }
 
 var x = 5
